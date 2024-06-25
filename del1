@@ -1,0 +1,55 @@
+
+install.packages(c("mlbench", "dplyr", "ggplot2", "reshape2", "caret"))
+library(mlbench)
+library(dplyr)
+library(ggplot2)
+library(reshape2)
+library(caret)
+
+
+data("BostonHousing")
+housing <- BostonHousing
+str(housing)
+
+
+ggplot(housing, aes(x = medv)) +
+  stat_density() +
+  labs(x = "Median Value ($1000s)", y = "Density", title = "Density Plot of Median Value House Price in Boston") +
+  theme_minimal()
+
+housing %>%
+  select(crim, rm, age, rad, tax, lstat, medv) %>%
+  melt(id.vars = "medv") %>%
+  ggplot(aes(x = value, y = medv, colour = variable)) +
+  geom_point(alpha = 0.7) +
+  stat_smooth(colour = "black") + 
+  facet_wrap(~variable, scales = "free", ncol = 2) +
+  labs(x = "Variable Value", y = "Median House Price ($1000s)") +
+  theme_minimal()
+
+
+set.seed(123)
+trainIndex <- createDataPartition(housing$medv, p = 0.75, list = FALSE)
+train <- housing[trainIndex, ]
+test <- housing[-trainIndex, ]
+
+
+first_lm <- lm(medv ~ crim + rm + tax + lstat, data = train)
+cat("First linear model has an r-squared value of", round(summary(first_lm)$r.squared, 3), "\n")
+
+
+second_lm <- lm(log(medv) ~ crim + rm + tax + lstat, data = train)
+cat("Second linear model has an r-squared value of", round(summary(second_lm)$r.squared, 3), "\n")
+
+
+cat("Mean of residuals:", abs(mean(second_lm$residuals)), "\n")
+
+
+predicted <- predict(second_lm, newdata = test)
+results <- data.frame(predicted = exp(predicted), original = test$medv)
+ggplot(results, aes(x = predicted, y = original)) +
+  geom_point() +
+  stat_smooth() +
+  labs(x = "Predicted Values", y = "Original Values", title = "Predicted vs. Original Values") +
+  theme_minimal()
+
